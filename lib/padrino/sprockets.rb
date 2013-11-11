@@ -1,6 +1,7 @@
 # encoding: utf-8
 require "sprockets"
 require "tilt"
+require "thread"
 
 module Sprockets
   class JSMinifier < Tilt::Template
@@ -50,6 +51,7 @@ module Padrino
       attr_reader :environment
 
       def initialize(app, options={})
+        @semaphore = Mutex.new
         @app = app
         @root = options[:root]
         url   =  options[:url] || 'assets'
@@ -84,7 +86,9 @@ module Padrino
       def call(env)
         if @matcher =~ env["PATH_INFO"]
           env['PATH_INFO'].sub!(@matcher,'')
-          @environment.call(env)
+          @semaphore.synchronize do
+            @environment.call(env)
+          end
         else
           @app.call(env)
         end
